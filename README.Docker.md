@@ -5,10 +5,10 @@ When you're ready, start your application by running:
 
 Your application listens on TCP port 38759. You can connect using netcat (nc) or any TCP client:
 
-# On Windows, WSL, or macOS (the command Caleb is running using WSL):
+### On Windows, WSL, or macOS (the command Caleb is running using WSL):
 nc -v host.docker.internal 38759
 
-# On Linux without Docker Desktop, you can try:
+### On Linux without Docker Desktop, you can try:
 nc -v <your-host-ip> 38759
 
 ### Deploying your application to the cloud
