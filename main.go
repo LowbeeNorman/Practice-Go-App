@@ -1,60 +1,42 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"net"
-	"os"
+    "bufio"
+    "fmt"
+    "net"
 )
 
-func main() {
-	const port = ":38759"
+func handleConnection(conn net.Conn) {
+    defer conn.Close()
+    clientAddr := conn.RemoteAddr().String()
+    fmt.Println("Client connected:", clientAddr)
 
-	// Start listening on the specified port
-	listener, err := net.Listen("tcp", port)
-	if err != nil {
-		fmt.Println("Error starting server:", err)
-		os.Exit(1)
-	}
-	defer listener.Close()
+    scanner := bufio.NewScanner(conn)
+    for scanner.Scan() {
+        text := scanner.Text()
+        fmt.Printf("Received from %s: %s\n", clientAddr, text)
+        fmt.Fprintln(conn, "Echo:", text)
+    }
 
-	fmt.Println("Server listening on port", port)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("Error accepting connection:", err)
-			continue
-		}
-
-		fmt.Println("New connection from", conn.RemoteAddr())
-
-		// Handle each client connection in a separate goroutine
-		go handleConnection(conn)
-	}
+    fmt.Println("Client disconnected:", clientAddr)
 }
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
+func main() {
+    listener, err := net.Listen("tcp", ":38759") // listens on all interfaces
+    if err != nil {
+        fmt.Println("Error starting server:", err)
+        return
+    }
+    defer listener.Close()
 
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		message := scanner.Text()
-		fmt.Printf("Received: %s\n", message)
+    fmt.Println("Server listening on port :38759")
 
-		// Echo the message back to the client
-		_, err := conn.Write([]byte("Echo: " + message + "\n"))
-		if err != nil {
-			fmt.Println("Error writing to connection:", err)
-			return
-		}
-	}
-
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Connection error:", err)
-	}
-
-	fmt.Println("Client disconnected:", conn.RemoteAddr())
-
+    for {
+        conn, err := listener.Accept()
+        if err != nil {
+            fmt.Println("Error accepting connection:", err)
+            continue
+        }
+        go handleConnection(conn)
+    }
 }
