@@ -1,60 +1,45 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
 ################################################################################
-# Create a stage for building the application.
+# Build stage
 ARG GO_VERSION=1.25.3
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
 WORKDIR /src
 
-# Download dependencies as a separate step to take advantage of Docker's caching.
-# Leverage a cache mount to /go/pkg/mod/ to speed up subsequent builds.
-# Leverage bind mounts to go.sum and go.mod to avoid having to copy them into
-# the container.
+# Download dependencies
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,source=go.mod,target=go.mod \
     go mod download -x
 
-# This is the architecture you're building for, which is passed in by the builder.
-# Placing it here allows the previous steps to be cached across architectures.
 ARG TARGETARCH
 
-# Build the application.
-# Leverage a cache mount to /go/pkg/mod/ to speed up subsequent builds.
-# Leverage a bind mount to the current directory to avoid having to copy the
-# source code into the container.
+# Build the Go binary
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,target=. \
     CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/server .
 
 ################################################################################
-# Create a new stage for running the application that contains the minimal
-# runtime dependencies for the application. This uses a Red Hat compatible
-# base image (Rocky Linux 9) instead of Alpine.
-FROM rockylinux:9 AS final
+# Runtime stage (RHEL-compatible, minimal)
+FROM rockylinux:9-minimal AS final
 
-# Install runtime dependencies
-RUN dnf install -y \
+# Install runtime dependencies and clean up
+RUN microdnf install -y \
         ca-certificates \
         tzdata \
     && update-ca-trust \
-    && dnf clean all
+    && microdnf clean all \
+    && rm -rf /var/cache/dnf /var/cache/yum
 
-# Create a non-privileged user that the app will run under
+# Create a non-privileged user
 ARG UID=10001
 RUN useradd -u ${UID} -r -s /sbin/nologin appuser
 USER appuser
 
-# Copy the executable from the "build" stage
+# Copy the Go binary from the build stage
 COPY --from=build /bin/server /bin/server
 
-# Expose the port that the application listens on
+# Expose the TCP port
 EXPOSE 38759
 
-# What the container should run when it is started
+# Run the server
 ENTRYPOINT ["/bin/server"]
