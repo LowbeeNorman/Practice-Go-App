@@ -3,7 +3,7 @@
 When you're ready, start your application by running:
 `docker compose up --build`.
 
-Your application listens on TCP port 38759. You can connect using netcat (nc) or any TCP client:
+Your application listens on TCP port 38759. You can connect using netcat (nc) or any TCP client (in another terminal of course):
 
 ### On Windows, WSL, or macOS (the command Caleb is running using WSL):
 nc -v host.docker.internal 38759
